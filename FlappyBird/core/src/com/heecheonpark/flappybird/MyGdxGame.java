@@ -5,6 +5,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Circle;
@@ -16,6 +17,7 @@ import java.util.Random;
 public class MyGdxGame extends ApplicationAdapter {
 	SpriteBatch batch;
 	Texture background;
+	Texture gameover;
 	Texture[] birds;
 	Texture topTube;
 	Texture bottomTube;
@@ -26,6 +28,9 @@ public class MyGdxGame extends ApplicationAdapter {
 	float birdY = 0;
 	double velocity = 0;
 	Circle birdWrapper;
+	int score = 0;
+	int scoringTube = 0;
+	BitmapFont font;
 
 	int gameState = 0;
 	float gravity = 2;
@@ -46,12 +51,18 @@ public class MyGdxGame extends ApplicationAdapter {
 	public void create () {
 		batch = new SpriteBatch();
 		background = new Texture("bg.png");
+		gameover = new Texture("gameover.png");
 		birds = new Texture[2];
 		birds[0] = new Texture("bird.png");
 		birds[1] = new Texture("bird2.png");
-		birdY = Gdx.graphics.getHeight() / 2 - birds[0].getHeight() / 2;
+
 		shapeRenderer = new ShapeRenderer();
+
+		// Set up font to display score.
 		birdWrapper = new Circle();
+		font = new BitmapFont();
+		font.setColor(Color.WHITE);
+		font.getData().setScale(10);
 
 		topTube = new Texture("toptube.png");
 		bottomTube = new Texture("bottomtube.png");
@@ -62,6 +73,12 @@ public class MyGdxGame extends ApplicationAdapter {
 		topTubeRectangles = new Rectangle[numberOfTubes];
 		bottomTubeRectangles = new Rectangle[numberOfTubes];
 
+		startGame();
+	}
+
+	public void startGame()
+	{
+		birdY = Gdx.graphics.getHeight() / 2 - birds[0].getHeight() / 2;
 		for (int i = 0; i < numberOfTubes; i++)
 		{
 
@@ -86,8 +103,22 @@ public class MyGdxGame extends ApplicationAdapter {
 		// Set up background from (0, 0) to full width and height.
 		batch.draw(background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-		if (gameState != 0)
+		if (gameState == 1)
 		{
+			if (tubeX[scoringTube] < Gdx.graphics.getWidth() / 2)
+			{
+				score++;
+
+				Gdx.app.log("Score", String.valueOf(score));
+				if (scoringTube < numberOfTubes - 1)
+				{
+					scoringTube++;
+				}
+				else
+				{
+					scoringTube = 0;
+				}
+			}
 			// Do something when the screen is touched.
 			if (Gdx.input.justTouched())
 			{
@@ -117,19 +148,36 @@ public class MyGdxGame extends ApplicationAdapter {
 				bottomTubeRectangles[i] = new Rectangle(tubeX[i], Gdx.graphics.getHeight() / 2 - gap / 2 - bottomTube.getHeight() + tubeOffset[i], bottomTube.getWidth(), bottomTube.getHeight());
 			}
 			// Prevent the bird to go lower than the bottom of the screen.
-			if (birdY > 0 || velocity < 0)
+			if (birdY > 0)
 			{
 				// Setting up a gravity effect.
 				velocity = velocity + gravity;
 				birdY -= velocity;
 			}
+			else
+			{
+				gameState = 2;
+			}
 
 		}
-		else
+		else if (gameState == 0)
 		{
 			if (Gdx.input.justTouched())
 			{
 				gameState = 1;
+			}
+		}
+		else if (gameState == 2)
+		{
+			batch.draw(gameover, Gdx.graphics.getWidth()/2 - gameover.getWidth()/2, Gdx.graphics.getHeight()/2 - gameover.getHeight()/2);
+
+			if (Gdx.input.justTouched())
+			{
+				gameState = 1;
+				startGame();
+				score = 0;
+				scoringTube = 0;
+				velocity = 0;
 			}
 		}
 
@@ -146,8 +194,9 @@ public class MyGdxGame extends ApplicationAdapter {
 
 		// Position the bird at the center.
 		batch.draw(birds[flapState], Gdx.graphics.getWidth() / 2 - birds[flapState].getWidth() / 2,  birdY);
-		batch.end();
-
+		// Score board at 100, 100;
+		font.draw(batch, String.valueOf(score), 100, 200);
+		birdWrapper.set(Gdx.graphics.getWidth() / 2, birdY + birds[flapState].getHeight() / 2, birds[flapState].getWidth() / 2);
 		// Collision event, wrapping bird object in a circle to detect a collision event.
 //		shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 //		shapeRenderer.setColor(Color.RED);
@@ -163,9 +212,11 @@ public class MyGdxGame extends ApplicationAdapter {
 			if (Intersector.overlaps(birdWrapper, topTubeRectangles[i]) || Intersector.overlaps(birdWrapper, bottomTubeRectangles[i]))
 			{
 				Gdx.app.log("Collision", "Detected!");
+				gameState = 2;
 			}
 		}
 //		shapeRenderer.end();
+		batch.end();
 
 	}
 	
